@@ -1,0 +1,30 @@
+# Core dependencies for Face Emotion Detection (compatible versions)
+tf_keras
+opencv-python==4.5.5.64
+tensorflow==2.16.1
+
+# PyQt5 GUI framework (from sport_analysis_project)
+PyQt5
+PyQt5-sip
+PyQtWebEngine
+qt-thread-updater==1.1.6
+
+# System monitoring and utilities
+psutil==5.9.8
+Pillow==9.5.0
+
+# Data processing and visualization
+numpy==1.23.5
+pandas
+matplotlib
+seaborn
+scipy
+
+# Additional utilities
+pyyaml==6.0
+shapely==2.0.1
+rich
+imutils
+tqdm
+requests
+deepface
