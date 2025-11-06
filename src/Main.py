@@ -14,6 +14,8 @@ import numpy as np
 from PIL import Image
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QLabel, QSizePolicy
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPainter, QColor
 from qt_thread_updater import get_updater
 from src import config as co
 from src.emotion_detector import EmotionDetector
@@ -30,7 +32,7 @@ def text_size(frame):
     # Calculate font scale and thickness based on frame size
     font_scale = frame_width / 600  # Adjust this divisor to scale text size
     font_thickness = max(2, int(frame_height / 200))  # Ensure thickness >= 1
-    text_color = (0, 165, 255)  # Orange in BGR
+    text_color = (255, 0, 0)  # Blue in BGR
 
     # Calculate text size with the dynamic scale and thickness
     (_, text_height), _ = cv2.getTextSize(text, font, font_scale, font_thickness)
@@ -54,18 +56,70 @@ class Main:
         self.frame_skip = 0
         self.frame_count = 0
         
-        # Initialize emotion detector
+        # Initialize emotion detector with configurable thresholds
         model_path = co.FACIAL_EXPRESSION_MODEL if os.path.exists(co.FACIAL_EXPRESSION_MODEL) else None
-        self.emotion_detector = EmotionDetector(model_path)
+        self.emotion_detector = EmotionDetector(
+            model_path=model_path,
+            min_neighbors=co.FACE_DETECTION_MIN_NEIGHBORS,
+            scale_factor=co.FACE_DETECTION_SCALE_FACTOR,
+            min_face_size=co.FACE_DETECTION_MIN_SIZE,
+            emotion_confidence_threshold=co.EMOTION_CONFIDENCE_THRESHOLD
+        )
         
         self.init_text_size()
 
     def img_cv_2_qt(self, img_cv):
-        """Convert OpenCV image to Qt image."""
-        height, width, channel = img_cv.shape
-        bytes_per_line = channel * width
-        img_qt = QtGui.QImage(img_cv, width, height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
-        return QtGui.QPixmap.fromImage(img_qt)
+        """
+        Convert OpenCV image to Qt image with letterbox padding (gray fill).
+        Resizes image to fit widget while maintaining aspect ratio, then centers it
+        on a gray background to fill the entire widget area.
+        """
+        # Get widget dimensions
+        widget_w = self.MainGUI.label_Image.width()
+        widget_h = self.MainGUI.label_Image.height()
+        
+        # Convert OpenCV BGR image to QPixmap
+        img_height, img_width, channel = img_cv.shape
+        bytes_per_line = channel * img_width
+        img_qt = QtGui.QImage(img_cv, img_width, img_height, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+        original_pixmap = QtGui.QPixmap.fromImage(img_qt)
+        
+        # Calculate aspect ratios
+        img_aspect = img_width / img_height if img_height > 0 else 1.0
+        widget_aspect = widget_w / widget_h if widget_h > 0 else 1.0
+        
+        # Calculate new dimensions to fit widget while maintaining aspect ratio
+        if img_aspect > widget_aspect:
+            # Image is wider - fit to widget width
+            new_width = widget_w
+            new_height = int(widget_w / img_aspect)
+        else:
+            # Image is taller - fit to widget height
+            new_height = widget_h
+            new_width = int(widget_h * img_aspect)
+        
+        # Resize original image maintaining aspect ratio
+        scaled_pixmap = original_pixmap.scaled(
+            new_width, 
+            new_height, 
+            Qt.KeepAspectRatio, 
+            Qt.SmoothTransformation
+        )
+        
+        # Create letterbox pixmap with exact widget size and gray fill
+        letterbox_pixmap = QtGui.QPixmap(widget_w, widget_h)
+        letterbox_pixmap.fill(QColor(128, 128, 128))  # Gray background (RGB: 128, 128, 128)
+        
+        # Calculate offset to center the scaled image
+        offset_x = (widget_w - new_width) // 2
+        offset_y = (widget_h - new_height) // 2
+        
+        # Draw scaled image onto letterbox at center position
+        painter = QPainter(letterbox_pixmap)
+        painter.drawPixmap(offset_x, offset_y, scaled_pixmap)
+        painter.end()
+        
+        return letterbox_pixmap
     
     def init_devices(self, url_camera):
         """Initialize camera or video capture device."""
@@ -245,7 +299,7 @@ class Main:
         self.text_y = 20
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.font_scale = 1
-        self.text_color = (0, 255, 0)
+        self.text_color = (255, 0, 0)  # Blue in BGR
         self.font_thickness = 2
     
     def set_target_fps(self, fps):
