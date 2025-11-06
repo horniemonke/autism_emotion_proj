@@ -15,11 +15,11 @@ def draw_bbox(image, bbox, score, label=""):
         image: Image with bounding box and score drawn.
     """
     x, y, w, h = bbox
-    cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 2)  # Blue in BGR
     
     # Draw score and label
     text = f"{label}: {score:.2f}" if label else f"{score:.2f}"
-    cv2.putText(image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(image, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)  # Blue in BGR
     return image
 
 def format_emotion_result(results):
